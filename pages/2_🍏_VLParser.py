@@ -335,15 +335,17 @@ with col_b2:
 ## column C start
 st.write("3.조회하기")
 if st.button('조회하기'):
+    with st.spinner('Wait for it...'):
 
-    for i in range(0,len(listdate)):
-        if i == 0:
-            prev_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
-        else :
-            tmp_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
-            sum_data = pd.concat([prev_data,tmp_data]) 
-            prev_data = sum_data
+        for i in range(0,len(listdate)):
+            if i == 0:
+                prev_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
+            else :
+                tmp_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
+                sum_data = pd.concat([prev_data,tmp_data]) 
+                prev_data = sum_data
     
+    st.success('Done!')
     st.write("조회결과")
 
     st.dataframe(prev_data)

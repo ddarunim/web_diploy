@@ -2,7 +2,6 @@ import pandas as pd  # 데이터 프레임 처리 : df
 import numpy as np
 from time import sleep
 import urllib.request # openAPI 부동산 정보 불러오기 : asv? 
-import pandas as pd
 from bs4 import BeautifulSoup # csv 스크롤러
 import re
 import streamlit as st
@@ -36,7 +35,7 @@ def query_sender_DANDOKrentfee(localcode, timecode):
     u = str(response_body, "utf-8")
     return u
 
-def get_VL_DANDOK_renthistory(localcode, timecode,typecode) : 
+def get_VL_DANDOK_renthistory(localcode, timecode, typecode) : 
     localcode = str(localcode)
     timecode = str(timecode)
     regex = re.compile(r'\d{4}')
@@ -71,13 +70,13 @@ def get_VL_DANDOK_renthistory(localcode, timecode,typecode) :
     xml_VL_string = [] # 실제 사용하기전 변수할당하여 추후 if에 true / false 로 사용
     xml_DANDOK_string = [] # 실제 사용하기전 변수할당하여 추후 if에 true / false 로 사용
     
-    if typecode == 0:
-        xml_DANDOK_string = query_sender_VLrentfee(localcode,timecode)
+    if typecode == 2:
+        xml_DANDOK_string = query_sender_DANDOKrentfee(localcode,timecode)
     elif typecode == 1:
-        xml_VL_string = query_sender_DANDOKrentfee(localcode,timecode)
+        xml_VL_string = query_sender_VLrentfee(localcode,timecode)
     else:
-        xml_DANDOK_string = query_sender_VLrentfee(localcode,timecode)
-        xml_VL_string = query_sender_DANDOKrentfee(localcode,timecode)
+        xml_DANDOK_string = query_sender_DANDOKrentfee(localcode,timecode)
+        xml_VL_string = query_sender_VLrentfee(localcode,timecode)
     
     if (xml_VL_string):
         print('VL rentfee parsing ready...for :' + timecode)
@@ -324,17 +323,19 @@ with col_b1:
 with col_b2:
     opt_type_str = st.radio(
         "부동산 유형 선택",
-        ('단독/다가구', '연립/다세대'))
-    if opt_type_str == '단독/다가구':
-        opt_type_int = 0
+        ('연립/다세대', '단독/다가구'))
+
     if opt_type_str == '연립/다세대':
         opt_type_int = 1
+    if opt_type_str == '단독/다가구':
+        opt_type_int = 2
 
     st.write('선택 유형 :', opt_type_str, '... 선택유형코드 :', opt_type_int)
 
 ## column C start
 st.write("3.조회하기")
 if st.button('조회하기'):
+
     for i in range(0,len(listdate)):
         if i == 0:
             prev_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
@@ -343,12 +344,7 @@ if st.button('조회하기'):
             sum_data = pd.concat([prev_data,tmp_data]) 
             prev_data = sum_data
     
-    st.write(sum_data)
+    st.write("조회결과")
 
+    st.dataframe(prev_data)
 
-# if st.button("거래월_지정"):
-#     date = getYearMonthList(2023,1,2023,2)
-#     st.write(date)
-
-#conda activate streamlit_deploy
-#streamlit run app.py

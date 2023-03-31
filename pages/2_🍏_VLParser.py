@@ -259,6 +259,26 @@ def getYearMonthList(start_year, start_month, end_year, end_month) :
             
     return date
 
+def getAreaCode(input_area_name):
+    if input_area_name == '강남구':
+        output_area_code = 11680
+    elif input_area_name == '서초구':
+        output_area_code = 11650
+    elif input_area_name == '송파구':
+        output_area_code = 11710
+    elif input_area_name == '상당구':
+        output_area_code = 43111
+    elif input_area_name == '서원구':
+        output_area_code = 43112
+    elif input_area_name == '흥덕구':
+        output_area_code = 43113
+    elif input_area_name == '청원구':
+        output_area_code = 43114
+    else:
+        output_area_code = 00000
+        
+    return output_area_code
+
 ### following under is for webpage_streamlit
 
 st.subheader("연립/다세대 및 단독/다가구 전월세 실거래 조회")
@@ -275,6 +295,11 @@ def doStateChagne_to_false_end_date_disb():
 def doStateChange_to_false_region_disb():
     st.session_state.region_disb = False
 
+@st.cache_data ## @st.cache
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv().encode('utf-8')
+
 if "end_date_disb" not in st.session_state:
     st.session_state.end_date_disb = True
 if "region_disb" not in st.session_state:
@@ -287,7 +312,7 @@ col_a1, col_a2 = st.columns([1,1])
 with col_a1:
     d_start = st.date_input(
         "조회년월 선택 (시작), 년/월 선택되며 일은 무시됨",
-        datetime.date(2023, 1, 1),
+        datetime.date(2023, 3, 1),
         on_change=doStateChagne_to_false_end_date_disb)
     #st.write('조회년월(시작):', d_start)
     st.write("시작 -- 조회 년도:", d_start.year, "조회 월", d_start.month)
@@ -307,18 +332,25 @@ st.write(listdate)
 st.write("2.조회하고 싶은 지역 및 부동산 유형 선택")
 col_b1, col_b2 = st.columns([1,1])
 with col_b1:
-    opt_region = st.selectbox(
-    '지역 선택',
-    ('강남구', '서초구', '송파구'),
-    disabled = st.session_state.region_disb)            
-    if opt_region == '강남구':
-        opt_areacode = 11680
-    if opt_region == '서초구':
-        opt_areacode = 11650
-    if opt_region == '송파구':
-        opt_areacode = 11710
+    opt_region_si = st.selectbox(
+    '지역 선택 (시/도)',
+    ('서울특별시', '청주시'),
+    disabled = st.session_state.region_disb)  
+    if opt_region_si == '서울특별시':
+        opt_region_gu = st.selectbox(
+        '지역 선택 (구/군)',
+        ('강남구', '서초구', '송파구'),
+        disabled = st.session_state.region_disb)
+    if opt_region_si == '청주시':
+        opt_region_gu = st.selectbox(
+        '지역 선택 (구/군)',
+        ('상당구','서원구','흥덕구','청원구'),
+        disabled = st.session_state.region_disb)
 
-    st.write('선택 지역 :', opt_region, '... 선택 코드 :', opt_areacode)
+
+    opt_areacode = getAreaCode(opt_region_gu)
+
+    st.write('선택 지역 :', opt_region_gu, '... 선택 코드 :', opt_areacode)
 
 with col_b2:
     opt_type_str = st.radio(
@@ -349,4 +381,11 @@ if st.button('조회하기'):
     st.write("조회결과")
 
     st.dataframe(prev_data)
+    csv_data = convert_df(prev_data)
 
+    st.download_button(
+        label="CSV 파일로 다운로드",
+        data=csv_data,
+        file_name='data.csv',
+        mime='text/csv',
+    )

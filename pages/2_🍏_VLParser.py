@@ -35,7 +35,7 @@ def query_sender_DANDOKrentfee(localcode, timecode):
     u = str(response_body, "utf-8")
     return u
 
-def get_VL_DANDOK_renthistory(localcode, timecode, typecode) : 
+def get_VL_DANDOK_renthistory(localcode, timecode, typecode, tradecode) : 
     localcode = str(localcode)
     timecode = str(timecode)
     regex = re.compile(r'\d{4}')
@@ -225,9 +225,20 @@ def get_VL_DANDOK_renthistory(localcode, timecode, typecode) :
             '월':month, '일':day, '계약갱신청구':renew_activate,
             '종전보증금':before_price, '종전월세':before_monthfee, '지도링크':navermap_link }
 
-    df = pd.DataFrame(data)
-    df = df.sort_values(by='보증금액', ascending=True)
-    
+    df_all = pd.DataFrame(data)
+    df_all = df_all.sort_values(by='보증금액', ascending=True)
+
+    df_jeonse = df_all[df_all["월세"]==0].reset_index(drop=True)
+    df_wolse = df_all[df_all["월세"]!=0].reset_index(drop=True)
+
+        
+    if tradecode == 2: # 1 = 매매, 2 = 전세, 3 = 월세
+        return df_jeonse
+    elif tradecode == 3:
+        return df_wolse
+    else:
+        return df_all
+
 #     print(len(area_code))   ## 코멘트 변환 단축키 : cmd + /
 #     print(len(building_type))
 #     print(len(apt_name))
@@ -241,8 +252,7 @@ def get_VL_DANDOK_renthistory(localcode, timecode, typecode) :
 #     print(len(year))
 #     print(len(month))
 #     print(len(day))
-    
-    return df
+
 
 def getYearMonthList(start_year, start_month, end_year, end_month) :
     date = []
@@ -305,87 +315,113 @@ if "end_date_disb" not in st.session_state:
 if "region_disb" not in st.session_state:
     st.session_state.region_disb = True
 
-st.write("1.조회하고 싶은 년/월 범위 입력")
+st.write("1.검색하고 싶은 년/월 범위 입력")
 
 col_a1, col_a2 = st.columns([1,1])
 
 with col_a1:
     d_start = st.date_input(
-        "조회년월 선택 (시작), 년/월 선택되며 일은 무시됨",
+        "시작 년/월을 입력하세요. 입력 후 종료 년/월 창이 활성화됩니다.",
         datetime.date(2023, 3, 1),
         on_change=doStateChagne_to_false_end_date_disb)
-    #st.write('조회년월(시작):', d_start)
-    st.write("시작 -- 조회 년도:", d_start.year, "조회 월", d_start.month)
-    
+
 with col_a2:
     d_end = st.date_input(
-        "조회년월 선택 (종료) 년/월 선택되며 일은 무시됨",
+        "종료 년/월을 입력하세요. 입력 후 지역 선택 창이 활성화됩니다.",
         datetime.date(2023, 3, 8),
         disabled = st.session_state.end_date_disb,
         on_change = doStateChange_to_false_region_disb)
-    st.write("종료 -- 조회 년도:", d_end.year, "조회 월", d_end.month)
+
 
 listdate = getYearMonthList(d_start.year,d_start.month,d_end.year,d_end.month)
-st.write(listdate)
+#st.write(listdate)
 
 ## column B start
-st.write("2.조회하고 싶은 지역 및 부동산 유형 선택")
+st.write("2.소재지역 및 부동산 유형 선택")
 col_b1, col_b2 = st.columns([1,1])
 with col_b1:
     opt_region_si = st.selectbox(
-    '지역 선택 (시/도)',
+    '검색하고 싶은 (시/도) 를 선택하세요.',
     ('서울특별시', '청주시'),
-    disabled = st.session_state.region_disb)  
+    disabled = st.session_state.region_disb) 
+
+with col_b2:
     if opt_region_si == '서울특별시':
         opt_region_gu = st.selectbox(
-        '지역 선택 (구/군)',
+        '검색하고 싶은 (구/군) 을 선택하세요.',
         ('강남구', '서초구', '송파구'),
         disabled = st.session_state.region_disb)
     if opt_region_si == '청주시':
         opt_region_gu = st.selectbox(
-        '지역 선택 (구/군)',
+        '검색하고 싶은 (구/군) 을 선택하세요.',
         ('상당구','서원구','흥덕구','청원구'),
         disabled = st.session_state.region_disb)
-
-
     opt_areacode = getAreaCode(opt_region_gu)
+st.write('선택 지역 :', opt_region_gu, '... 선택 코드 :', opt_areacode)
 
-    st.write('선택 지역 :', opt_region_gu, '... 선택 코드 :', opt_areacode)
-
-with col_b2:
-    opt_type_str = st.radio(
-        "부동산 유형 선택",
+## Column C Starts
+col_c1, col_c2 = st.columns([1,1])
+with col_c1:
+    asset_type_str = st.radio(
+        "검색하고 싶은 부동산 종류를 선택하세요.",
         ('연립/다세대', '단독/다가구'))
 
-    if opt_type_str == '연립/다세대':
-        opt_type_int = 1
-    if opt_type_str == '단독/다가구':
-        opt_type_int = 2
+    if asset_type_str == '연립/다세대':
+        asset_type_int = 1
+    elif asset_type_str == '단독/다가구':
+        asset_type_int = 2
+    else:
+        asset_type_int = 0
 
-    st.write('선택 유형 :', opt_type_str, '... 선택유형코드 :', opt_type_int)
+with col_c2:
+    trade_type_str = st.radio(
+        "검색하고 싶은 거래 기준을 선택하세요.",
+        ('매매','전세','월세')
+    )
+    if trade_type_str == '매매':
+        trade_type_int = 1
+    elif trade_type_str == '전세':
+        trade_type_int = 2
+    elif trade_type_str == '월세':
+        trade_type_int = 3
+    else:
+        trade_type_int = 0
 
-## column C start
-st.write("3.조회하기")
-if st.button('조회하기'):
-    with st.spinner('Wait for it...'):
+st.write('부동산 종류 :', asset_type_str, '... 선택유형코드 :', asset_type_int, '거래 기준 :', trade_type_str,
+            '... 거래기준코드:',trade_type_int)
+
+## column D start
+st.write("3.검색하기")
+if st.button('검색하기'):
+    with st.spinner('검색중입니다...'):
 
         for i in range(0,len(listdate)):
             if i == 0:
-                prev_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
+                prev_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],asset_type_int,trade_type_int)
             else :
-                tmp_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],opt_type_int)
+                tmp_data = get_VL_DANDOK_renthistory(opt_areacode,listdate[i],asset_type_int,trade_type_int)
                 sum_data = pd.concat([prev_data,tmp_data]) 
                 prev_data = sum_data
     
     st.success('Done!')
-    st.write("조회결과")
+    st.write("검색 결과")
 
-    st.dataframe(prev_data)
-    csv_data = convert_df(prev_data)
+    if (prev_data.empty == True):
+        st.write("검색 결과가 없습니다. 조건 변경 후 다시 검색해 주세요.")
+    else:
+        st.write("총 ", len(prev_data), " 건의 결과가 있습니다. 확인해주세요!")
+        st.dataframe(prev_data)
+        csv_data = convert_df(prev_data)
 
-    st.download_button(
-        label="CSV 파일로 다운로드",
-        data=csv_data,
-        file_name='data.csv',
-        mime='text/csv',
-    )
+        st.download_button(
+            label="CSV 파일 다운로드",
+            data=csv_data,
+            file_name='data.csv',
+            mime='text/csv',
+        )
+
+    # cood = pd.DataFrame(
+    #     {"lat":[43.91],
+    #      "lon":[141.88]}
+    # )
+    # st.map(cood)
